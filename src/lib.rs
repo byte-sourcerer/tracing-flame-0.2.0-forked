@@ -241,7 +241,7 @@ impl Default for Config {
             empty_samples: true,
             threads_collapsed: false,
             module_path: true,
-            file_and_line: true,
+            file_and_line: false,
         }
     }
 }
@@ -412,7 +412,7 @@ where
 
         if let Some(second) = first.parent() {
             for parent in second.scope().from_root() {
-                stack += "; ";
+                stack += ";";
                 write(&mut stack, parent, &self.config)
                     .expect("expected: write to String never fails");
             }
