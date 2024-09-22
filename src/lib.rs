@@ -454,7 +454,7 @@ where
         }
 
         for parent in first.scope().from_root() {
-            stack += "; ";
+            stack += ";";
             expect!(
                 write(&mut stack, parent, &self.config),
                 "expected: write to String never fails"
