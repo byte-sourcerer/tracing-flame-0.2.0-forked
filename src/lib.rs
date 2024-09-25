@@ -161,12 +161,8 @@ use tracing_subscriber::Layer;
 
 mod error;
 
-lazy_static! {
-    static ref START: Instant = Instant::now();
-}
-
 thread_local! {
-    static LAST_EVENT: Cell<Instant> = Cell::new(*START);
+    static LAST_EVENT: Cell<Option<Instant>> = Cell::new(None);
 
     static THREAD_NAME: String = {
         let thread = std::thread::current();
@@ -271,7 +267,6 @@ where
     pub fn new(writer: W) -> Self {
         // Initialize the start used by all threads when initializing the
         // LAST_EVENT when constructing the layer
-        let _unused = *START;
         Self {
             out: Arc::new(Mutex::new(writer)),
             config: Default::default(),
@@ -394,7 +389,9 @@ where
     W: Write + 'static,
 {
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
-        let samples = self.time_since_last_event();
+        let Some(samples) = self.time_since_last_event() else {
+            return;
+        };
 
         let first = ctx.span(id).expect("expected: span id exists in registry");
 
@@ -443,7 +440,7 @@ where
             };
         }
 
-        let samples = self.time_since_last_event();
+        let samples = self.time_since_last_event().unwrap();
         let first = expect!(ctx.span(id), "expected: span id exists in registry");
 
         let mut stack = String::new();
@@ -475,16 +472,16 @@ where
     S: Subscriber + for<'span> LookupSpan<'span>,
     W: Write + 'static,
 {
-    fn time_since_last_event(&self) -> Duration {
+    fn time_since_last_event(&self) -> Option<Duration> {
         let now = Instant::now();
 
         let prev = LAST_EVENT.with(|e| {
             let prev = e.get();
-            e.set(now);
+            e.set(Some(now));
             prev
         });
 
-        now - prev
+        prev.map(|prev| now - prev)
     }
 }
 
