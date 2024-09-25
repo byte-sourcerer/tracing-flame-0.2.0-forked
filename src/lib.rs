@@ -399,26 +399,28 @@ where
             return;
         }
 
-        let mut stack = String::new();
 
-        if !self.config.threads_collapsed {
-            THREAD_NAME.with(|name| stack += name.as_str());
-        } else {
-            stack += "all-threads";
-        }
 
         if let Some(second) = first.parent() {
+            let mut stack = String::new();
+
+            if !self.config.threads_collapsed {
+                THREAD_NAME.with(|name| stack += name.as_str());
+            } else {
+                stack += "all-threads";
+            }
+
             for parent in second.scope().from_root() {
                 stack += ";";
                 write(&mut stack, parent, &self.config)
                     .expect("expected: write to String never fails");
             }
+
+            write!(&mut stack, " {}", samples.as_nanos())
+                .expect("expected: write to String never fails");
+
+            let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
         }
-
-        write!(&mut stack, " {}", samples.as_nanos())
-            .expect("expected: write to String never fails");
-
-        let _ = writeln!(*self.out.lock().unwrap(), "{}", stack);
     }
 
     fn on_exit(&self, id: &span::Id, ctx: Context<'_, S>) {
